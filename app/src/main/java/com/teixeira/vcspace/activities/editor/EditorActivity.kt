@@ -15,6 +15,7 @@
 
 package com.teixeira.vcspace.activities.editor
 
+import android.os.Build
 import android.util.Log
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,13 +23,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -36,16 +40,23 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.blankj.utilcode.util.PathUtils
 import com.teixeira.vcspace.activities.BaseComposeActivity
+import com.teixeira.vcspace.activities.editor.EditorHandlerActivity.Companion.EXTRA_KEY_PLUGIN_MANIFEST
+import com.teixeira.vcspace.app.noLocalProvidedFor
 import com.teixeira.vcspace.editor.events.OnContentChangeEvent
+import com.teixeira.vcspace.extensions.toFile
+import com.teixeira.vcspace.preferences.pluginsPath
 import com.teixeira.vcspace.screens.editor.EditorScreen
 import com.teixeira.vcspace.screens.editor.components.EditorDrawerSheet
 import com.teixeira.vcspace.screens.editor.components.EditorTopBar
 import com.teixeira.vcspace.viewmodel.editor.EditorViewModel
 import com.teixeira.vcspace.viewmodel.file.FileExplorerViewModel
+import com.vcspace.plugins.Manifest
 import io.github.rosemoe.sora.event.ContentChangeEvent
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+
+val LocalDrawerState = compositionLocalOf<DrawerState> { noLocalProvidedFor("LocalDrawerState") }
 
 class EditorActivity : BaseComposeActivity() {
   companion object {
@@ -91,7 +102,23 @@ class EditorActivity : BaseComposeActivity() {
             EventBus.getDefault().unregister(this@EditorActivity)
           }
 
-          Lifecycle.Event.ON_START -> {}
+          Lifecycle.Event.ON_START -> {
+            // Open plugin files if opened from PluginsActivity
+            run {
+              @Suppress("DEPRECATION")
+              val manifest = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getSerializableExtra(EXTRA_KEY_PLUGIN_MANIFEST, Manifest::class.java)
+              } else intent.getSerializableExtra(EXTRA_KEY_PLUGIN_MANIFEST) as? Manifest
+
+              if (manifest != null) {
+                val pluginPath = "$pluginsPath/${manifest.packageName}"
+                editorViewModel.addFiles(
+                  "$pluginPath/manifest.json".toFile(),
+                  "$pluginPath/${manifest.scripts.first().name}".toFile(),
+                )
+              }
+            }
+          }
           Lifecycle.Event.ON_RESUME -> {}
           Lifecycle.Event.ON_STOP -> {}
           Lifecycle.Event.ON_ANY -> {}
@@ -105,44 +132,42 @@ class EditorActivity : BaseComposeActivity() {
       }
     }
 
-    ModalNavigationDrawer(
-      modifier = Modifier
-        .fillMaxSize()
-        .imePadding(),
-      drawerState = drawerState,
-      gesturesEnabled = false,
-      drawerContent = {
-        ModalDrawerSheet(
-          drawerState = drawerState,
-          modifier = Modifier
-            .fillMaxWidth(fraction = 0.8f)
-            .systemBarsPadding()
-        ) {
-
-          EditorDrawerSheet(
-            fileExplorerViewModel = fileExplorerViewModel,
-            editorViewModel = editorViewModel,
-            drawerState = drawerState
-          )
-        }
-      }
-    ) {
-      Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-          EditorTopBar(
-            editorViewModel = editorViewModel,
-            drawerState = drawerState
-          )
+    CompositionLocalProvider(LocalDrawerState provides drawerState) {
+      ModalNavigationDrawer(
+        modifier = Modifier
+          .fillMaxSize()
+          .imePadding(),
+        drawerState = LocalDrawerState.current,
+        gesturesEnabled = false,
+        drawerContent = {
+          ModalDrawerSheet(
+            drawerState = LocalDrawerState.current,
+            modifier = Modifier
+              .fillMaxWidth(fraction = 0.8f)
+              .systemBarsPadding()
+          ) {
+            EditorDrawerSheet(
+              fileExplorerViewModel = fileExplorerViewModel,
+              editorViewModel = editorViewModel
+            )
+          }
         }
       ) {
-        EditorScreen(
-          viewModel = editorViewModel,
-          drawerState = drawerState,
-          modifier = Modifier
-            .fillMaxSize()
-            .padding(it)
-        )
+        Scaffold(
+          modifier = Modifier.fillMaxSize(),
+          topBar = {
+            EditorTopBar(
+              editorViewModel = editorViewModel
+            )
+          }
+        ) {
+          EditorScreen(
+            viewModel = editorViewModel,
+            modifier = Modifier
+              .fillMaxSize()
+              .padding(it)
+          )
+        }
       }
     }
   }

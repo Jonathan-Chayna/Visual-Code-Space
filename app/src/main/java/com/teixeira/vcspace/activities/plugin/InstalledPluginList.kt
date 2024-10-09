@@ -37,12 +37,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.teixeira.vcspace.activities.editor.EditorActivity
 import com.teixeira.vcspace.activities.editor.EditorHandlerActivity
 import com.teixeira.vcspace.extensions.getEmptyActivityBundle
 import com.teixeira.vcspace.resources.R
 import com.teixeira.vcspace.ui.LoadingDialog
-import com.teixeira.vcspace.ui.ToastHostState
+import com.teixeira.vcspace.ui.LocalToastHostState
 import com.teixeira.vcspace.viewmodel.PluginViewModel
 import com.vcspace.plugins.Plugin
 import kotlinx.coroutines.CoroutineScope
@@ -53,14 +54,16 @@ fun InstalledPluginList(
   modifier: Modifier = Modifier,
   viewModel: PluginViewModel,
   listState: LazyListState,
-  scope: CoroutineScope,
-  toastHostState: ToastHostState
+  scope: CoroutineScope
 ) {
-  val plugins by viewModel.installedPlugins
-  val isLoading by viewModel.isLoadingInstalledPlugins
+  val installedPluginState by viewModel.installedPluginState.collectAsStateWithLifecycle()
+
+  val isLoading = installedPluginState.isLoading
+  val plugins = installedPluginState.plugins
 
   var selectedPlugin by remember { mutableStateOf<Plugin?>(null) }
   val context = LocalContext.current
+  val toastHostState = LocalToastHostState.current
 
   if (isLoading) {
     LoadingDialog(message = "Loading")
@@ -103,7 +106,6 @@ fun InstalledPluginList(
       plugin = it,
       viewModel = viewModel,
       scope = scope,
-      toastHostState = toastHostState,
       onDismissSheet = { selectedPlugin = null },
     )
   }
