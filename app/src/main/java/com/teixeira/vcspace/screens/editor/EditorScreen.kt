@@ -78,7 +78,7 @@ fun EditorScreen(
 
   val openLastFiles by rememberLastOpenedFile()
 
-  if (openLastFiles) {
+  if (!openLastFiles) {
     viewModel.lastOpenedFiles().forEach {
       viewModel.addFile(it)
     }
@@ -188,7 +188,7 @@ private fun configureColorScheme(editor: VCSpaceEditor) {
           "Abyss" -> "abyss"
           "Solarized Dark" -> "solarized_drak"
           "Python Dark Mode" -> "pythondm"
-          else -> if ((followSystemTheme && isDarkTheme) || isDarkMode) "darcula" else "quietlight"
+          else -> if ((followSystemTheme && isDarkTheme) || isDarkMode) "pythondm" else "quietlight"
         }
       ).also {
         setText(text.toString()) // Required to update colors correctly
