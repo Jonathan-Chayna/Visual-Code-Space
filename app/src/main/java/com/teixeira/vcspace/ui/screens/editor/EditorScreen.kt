@@ -208,7 +208,8 @@ private fun configureColorScheme(editor: VCSpaceEditor) {
           "Darcula" -> "darcula"
           "Abyss" -> "abyss"
           "Solarized Dark" -> "solarized_drak"
-          else -> if ((followSystemTheme && isDarkTheme) || isDarkMode) "darcula" else "quietlight"
+          "Python Dark Mode" -> "pythondm"
+          else -> if ((followSystemTheme && isDarkTheme) || isDarkMode) "pythondm" else "quietlight"
         }
       ).also {
         setText(text.toString()) // Required to update colors correctly
